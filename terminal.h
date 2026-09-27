@@ -217,6 +217,26 @@ enum kitty_kbd_flags {
                            KITTY_KBD_REPORT_ASSOCIATED),
 };
 
+struct kitty_image {
+    uint32_t id;
+    bool alt;      /* made on the alternate screen */
+    bool opaque;
+    int width;
+    int height;
+    uint32_t *data;
+    pixman_image_t *pix;
+};
+
+struct kitty_placement {
+    uint32_t image_id;
+    uint32_t id;
+    bool alt;
+    int row, col;   /* the anchor cell, in the view */
+    int x, y, w, h; /* source rectangle */
+    int xoff, yoff; /* pixel offset within the anchor cell */
+    int z;
+};
+
 struct grid {
     int num_rows;
     int num_cols;
@@ -284,6 +304,13 @@ struct vt {
         size_t idx;
         bool bel; /* true if OSC string was terminated by BEL */
     } osc;
+
+    struct {
+        char *data;
+        size_t size;
+        size_t idx;
+        bool overflow;
+    } apc;
 
     /* Start coordinate for current OSC-8 URI */
     struct {
@@ -735,6 +762,14 @@ struct terminal {
         int new_rows;         /* New number of scrollback rows */
         struct range selection_coords;
     } interactive_resizing;
+
+    struct {
+        tll(struct kitty_image) images;
+        tll(struct kitty_placement) placements;
+        pixman_region32_t dirty;  /* window pixels to redraw: where placements were or are */
+        bool dirty_init;
+        size_t bytes;
+    } kitty_gfx;
 
     struct {
         enum {

@@ -279,6 +279,7 @@ vtlib = static_library(
   'macros.h',
   'osc.c', 'osc.h',
   'sixel.c', 'sixel.h',
+  'kitty-gfx.c', 'kitty-gfx.h',
   'vt.c', 'vt.h',
   builtin_terminfo, srgb_funcs,
   wl_proto_src + wl_proto_headers,

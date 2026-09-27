@@ -19,6 +19,7 @@
 #include "grid.h"
 #include "selection.h"
 #include "sixel.h"
+#include "kitty-gfx.h"
 #include "util.h"
 #include "version.h"
 #include "vt.h"
@@ -518,6 +519,7 @@ decset_decrst(struct terminal *term, unsigned param, bool enable)
 
         else if (!enable && term->grid == &term->alt) {
             selection_cancel(term);
+            kitty_gfx_leave_alt(term);
 
             term->grid = &term->normal;
 

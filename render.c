@@ -40,6 +40,7 @@
 #include "selection.h"
 #include "shm.h"
 #include "sixel.h"
+#include "kitty-gfx.h"
 #include "srgb.h"
 #include "url-mode.h"
 #include "util.h"
@@ -3403,6 +3404,8 @@ grid_render(struct terminal *term)
     buf->age = 0;
 
 
+    const bool scrolled = tll_length(term->grid->scroll_damage) > 0;
+
     tll_foreach(term->grid->scroll_damage, it) {
         switch (it->item.type) {
         case DAMAGE_SCROLL:
@@ -3547,6 +3550,8 @@ grid_render(struct terminal *term)
     }
 #endif
 
+    kitty_gfx_prepare(term, scrolled);
+
     pixman_region32_t damage;
     pixman_region32_init(&damage);
 
@@ -3593,6 +3598,8 @@ grid_render(struct terminal *term)
 
     for (size_t i = 0; i < term->render.workers.count; i++)
         pixman_region32_union(&damage, &damage, &buf->dirty[i + 1]);
+
+    kitty_gfx_render(term, buf->pix[0], &damage);
 
     pixman_region32_union(&buf->dirty[0], &buf->dirty[0], &damage);
 

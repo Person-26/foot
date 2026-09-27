@@ -39,6 +39,7 @@
 #include "selection.h"
 #include "shm.h"
 #include "sixel.h"
+#include "kitty-gfx.h"
 #include "slave.h"
 #include "spawn.h"
 #include "url-mode.h"
@@ -1940,6 +1941,8 @@ term_destroy(struct terminal *term)
         notify_icon_free(&term->notification_icons[i]);
 
     sixel_fini(term);
+    kitty_gfx_reset(term);
+    free(term->vt.apc.data);
 
     term_ime_reset(term);
 
@@ -2148,6 +2151,8 @@ term_reset(struct terminal *term, bool hard)
 
     term->meta.esc_prefix = true;
     term->meta.eight_bit = true;
+
+    kitty_gfx_reset(term);
 
     tll_foreach(term->normal.sixel_images, it) {
         sixel_destroy(&it->item);
