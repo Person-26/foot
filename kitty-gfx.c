@@ -24,6 +24,22 @@
 #define KITTY_GFX_MAX_BYTES (320u * 1024 * 1024)
 #define KITTY_GFX_MAX_DIM 10000
 
+/* Pixels are mapped, not malloc'ed: a PDF viewer frees and loads ~10 MB
+ * pages all the time, and malloc would keep the freed ones around */
+static uint32_t *
+pixels_alloc(size_t n)
+{
+    void *p = mmap(NULL, n * 4, PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    return p != MAP_FAILED ? p : NULL;
+}
+
+static void
+pixels_free(uint32_t *p, int width, int height)
+{
+    munmap(p, (size_t)width * height * 4);
+}
+
 struct cmd {
     char a, t, d;
     int f, s, v, x, y, w, h, X, Y, z, q;
@@ -176,7 +192,7 @@ image_free(struct terminal *term, struct kitty_image *img)
     }
     term->kitty_gfx.bytes -= (size_t)img->width * img->height * 4;
     pixman_image_unref(img->pix);
-    free(img->data);
+    pixels_free(img->data, img->width, img->height);
 }
 
 static void
@@ -264,8 +280,14 @@ load(struct terminal *term, const struct cmd *c, uint32_t **out)
     } else
         return "EINVAL:unsupported transmission medium";
 
-    uint32_t *data = xmalloc((size_t)c->s * c->v * 4);
     const size_t n = (size_t)c->s * c->v;
+    uint32_t *data = pixels_alloc(n);
+    if (data == NULL) {
+        if (map != MAP_FAILED)
+            munmap(map, map_len);
+        free(decoded);
+        return "ENOMEM:out of memory";
+    }
     if (bpp == 3) {
         for (size_t k = 0; k < n; k++, src += 3)
             data[k] = 0xffu << 24 | (uint32_t)src[0] << 16 | (uint32_t)src[1] << 8 | src[2];
@@ -387,7 +409,7 @@ kitty_gfx_apc(struct terminal *term, const char *data, size_t len)
         uint32_t *px;
         err = load(term, &c, &px);
         if (err == NULL)
-            free(px);
+            pixels_free(px, c.s, c.v);
         break;
     }
 
@@ -549,7 +571,7 @@ free_all(struct terminal *term, bool alt_only)
             continue;
         term->kitty_gfx.bytes -= (size_t)it->item.width * it->item.height * 4;
         pixman_image_unref(it->item.pix);
-        free(it->item.data);
+        pixels_free(it->item.data, it->item.width, it->item.height);
         tll_remove(term->kitty_gfx.images, it);
     }
 }

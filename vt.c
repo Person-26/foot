@@ -663,8 +663,11 @@ static void
 action_apc_end(struct terminal *term, uint8_t c)
 {
     struct vt *vt = &term->vt;
+
+    /* NUL-terminate (the payload is decoded as a C string), uncounted */
+    action_apc_put(term, 0);
     if (!vt->apc.overflow)
-        kitty_gfx_apc(term, vt->apc.data, vt->apc.idx);
+        kitty_gfx_apc(term, vt->apc.data, --vt->apc.idx);
 
     if (vt->apc.size > 4096) {  /* don't hold on to a big direct transmit */
         free(vt->apc.data);
